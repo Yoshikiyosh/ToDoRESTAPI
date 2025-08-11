@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
@@ -11,9 +13,46 @@ class DatabaseManager:
     def __init__(self, database_url: str):
         self.database_url = database_url
         
+        # データベースファイルのディレクトリを作成
+        if database_url.startswith("sqlite"):
+            # SQLiteのパスを抽出（Windows/Unix両対応）
+            db_path = database_url.replace("sqlite+aiosqlite:///", "").replace("sqlite:///", "")
+            
+            # Windows drive letter対応 (C:/path/to/file)
+            if len(db_path) > 1 and db_path[1] == ':':
+                db_path = db_path
+            elif db_path.startswith("./"):
+                db_path = db_path[2:]
+            
+            # Pathオブジェクトに変換してディレクトリを作成
+            db_path_obj = Path(db_path)
+            db_dir = db_path_obj.parent
+            db_dir.mkdir(parents=True, exist_ok=True)
+            
+            # データベースファイルを事前に作成してテスト
+            try:
+                import sqlite3
+                test_conn = sqlite3.connect(str(db_path_obj))
+                test_conn.close()
+            except Exception as e:
+                raise RuntimeError(f"Failed to create database file: {e}")
+        
         # 同期エンジン（テーブル作成用）
+        # WindowsでもUnixでも動作するように調整
+        if database_url.startswith("sqlite+aiosqlite:///"):
+            # 絶対パス（Windows: C:/ Unix: /）を正しく処理
+            db_path_part = database_url.replace("sqlite+aiosqlite:///", "")
+            if len(db_path_part) > 1 and db_path_part[1] == ':':
+                # Windows絶対パス (C:/...)
+                sync_url = f"sqlite:///{db_path_part}"
+            else:
+                # 相対パスまたはUnix絶対パス
+                sync_url = f"sqlite:///{db_path_part}"
+        else:
+            sync_url = database_url.replace("sqlite+aiosqlite://", "sqlite:///")
+        
         self.sync_engine = create_engine(
-            database_url.replace("sqlite+aiosqlite://", "sqlite:///"),
+            sync_url,
             echo=False
         )
         

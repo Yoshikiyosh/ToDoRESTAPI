@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field
@@ -14,7 +15,7 @@ class Settings(BaseSettings):
     
     # データベース設定
     database_url: str = Field(
-        default="sqlite+aiosqlite:///./todos.db",
+        default=f"sqlite+aiosqlite:///{str(Path(__file__).parent.parent / 'data' / 'todos.db').replace(chr(92), '/')}",
         description="データベース接続URL"
     )
     

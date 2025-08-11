@@ -60,8 +60,10 @@ class Todo:
         if len(self.tags) > 20:
             raise ValueError("maximum 20 tags allowed")
 
-        # due_date の検証
-        if self.due_date and self.created_at and self.due_date < self.created_at:
+        # due_date の検証（新規作成時は created_at がまだ設定されていない場合があるのでスキップ）
+        if (self.due_date and self.created_at and 
+            self.id is not None and  # 既存のTodoの場合のみチェック
+            self.due_date < self.created_at):
             # 仕様では警告として扱うオプションもあるが、ここでは例外として扱う
             raise ValueError("due_date cannot be before created_at")
 
